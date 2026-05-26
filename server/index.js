@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import dbConnect from "./db/dbConnect.js";
 import cookieParser from "cookie-parser";
+import authRout from "./rout/authRout.js";
 
 dotenv.config();
 
@@ -11,20 +12,24 @@ const PORT = process.env.PORT || 3000;
 
 const allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
 
-app.use(cors({
+app.use(
+  cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"], //only allows these type of requests to be made to the server from the client
-}));
+  }),
+);
 
 app.use(express.json());
 app.use(cookieParser());
+
+app.use("/api/auth", authRout);
 
 app.get("/", (req, res) => {
   res.json("wow");
