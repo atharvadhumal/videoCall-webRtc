@@ -1,9 +1,21 @@
-import './App.css'
+import "./App.css";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Auth from "./pages/auth/Auth";
+import Dashboard from "./pages/dashboard/Dashboard.jsx";
+import IsLogin from "./pages/auth/IsLogin.jsx";
 
 const App = () => {
   return (
-    <div>App</div>
-  )
-}
+    <Router>
+      <Routes>
+        <Route element={<IsLogin />}>
+          <Route path="/" element={<Dashboard />} />
+        </Route>
+        <Route path="/signup" element={<Auth type="signup" />} />
+        <Route path="/login" element={<Auth type="login" />} />
+      </Routes>
+    </Router>
+  );
+};
 
-export default App
+export default App;

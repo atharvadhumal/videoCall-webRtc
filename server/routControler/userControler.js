@@ -1,3 +1,5 @@
+import User from "../schema/userSchema.js";
+
 export const getAllUsers = async (req, res) => {
   const currentUserID = req.user?._conditions?._id;
   if (!currentUserID)

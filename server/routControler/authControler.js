@@ -54,7 +54,7 @@ export const Login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (user)
+    if (!user)
       return res
         .status(500)
         .send({ success: false, message: "Email does not exist" });
