@@ -4,6 +4,7 @@ import cors from "cors";
 import dbConnect from "./db/dbConnect.js";
 import cookieParser from "cookie-parser";
 import authRout from "./rout/authRout.js";
+import userRout from "./rout/userRout.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth", authRout);
+app.use("/api/user", userRout);
 
 app.get("/", (req, res) => {
   res.json("wow");
