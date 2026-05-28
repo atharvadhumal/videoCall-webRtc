@@ -1,15 +1,19 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import dbConnect from "./db/dbConnect.js";
 import cookieParser from "cookie-parser";
+import dbConnect from "./db/dbConnect.js";
 import authRout from "./rout/authRout.js";
 import userRout from "./rout/userRout.js";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const server = createServer(app);
 
 const allowedOrigins = [process.env.CLIENT_URL]; // Replace with your client's URL
 
@@ -37,14 +41,61 @@ app.get("/", (req, res) => {
   res.json("wow");
 });
 
-// async () => {
-//   try {
-app.listen(PORT, async () => {
-  await dbConnect();
-  console.log(`Server is running on port ${PORT}`);
+const io = new Server(server, {
+  pingTimeout: 60000,
+  cors: {
+    origin: allowedOrigins[0],
+    methods: ["GET", "POST"],
+  },
 });
-//   } catch (error) {
-//     console.error("Database connection error:", error);
-//     process.exit(1);
-//   }
-// };
+
+console.log("Success Socket IO initialized");
+
+let onlineUsers = [];
+
+io.on("connection", (socket) => {
+  console.log("Info - new conecction established with socket id: ", socket.id);
+
+  socket.emit("me", socket.id);
+
+  socket.on("join", (user) => {
+    if (!user || !user.id) {
+      console.log("Error - user data is missing or invalid");
+      return;
+    }
+    socket.join(user.id);
+    const exstingUser = onlineUsers.find((u) => u.userId === user.id);
+    if (exstingUser) {
+      exstingUser.socketId = socket.id;
+    } else {
+      onlineUsers.push({ userId: user.id, socketId: socket.id });
+    }
+
+    io.emit("online-users", onlineUsers);
+  });
+
+  socket.on("disconnect", () => {
+    const user = onlineUsers.find((u) => u.socketId === socket.id);
+    onlineUsers = onlineUsers.filter((u) => u.socketId !== socket.id);
+
+    io.emit("online-users", onlineUsers);
+
+    socket.broadcast.emit("diconnected", { disUser: socket.id });
+
+    console.log("Info - socket disconnected with id: ", socket.id);
+  });
+});
+
+const startServer = async () => {
+  try {
+    await dbConnect();
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Database connection error:", error);
+    process.exit(1);
+  }
+};
+
+startServer();

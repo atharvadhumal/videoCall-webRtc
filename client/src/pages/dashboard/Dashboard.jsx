@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContextApi.jsx";
 import { FaTimes, FaDoorClosed, FaBars } from "react-icons/fa";
 import apiClient from "../../apiClient.js";
+import SocketContext from "../socket/SocketContext.jsx";
 
 function Dashboard() {
   const { user, updateUser } = useUser();
@@ -12,11 +13,36 @@ function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
+  const hasJoined = useRef(false);
 
-   const allusers = async () => {
+
+  const [me, setMe] = useState("");
+  const [onlineUsers, setOnlineUser] = useState([]);
+
+  const socket = SocketContext.getSocket();
+  console.log("Dashboard - Socket instance:", socket);
+
+  useEffect(() => {
+    if (user && socket && !hasJoined.current) {
+      socket.emit("join", { id: user._id, name: user.username });
+      hasJoined.current = true;
+    }
+    socket.on("me", (id) => setMe(id));
+
+    socket.on("online-users", (onlineUsers) => {
+      setOnlineUser(onlineUsers); 
+    });
+
+    return () => {
+      socket.off("me");
+      socket.off("online-users");
+    };
+  }, [user, socket]);
+
+  const allusers = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/user');
+      const response = await apiClient.get("/user");
       if (response.data.success !== false) {
         setUsers(response.data.users);
       }
@@ -31,24 +57,25 @@ function Dashboard() {
     allusers();
   }, []);
 
-    const handleLogout = async () => {
-      try {
-        await apiClient.get('/auth/logout');
-        updateUser(null);
-        localStorage.removeItem("userData");
-        navigate('/login');
-      } catch (error) {
-        console.error("Logout failed", error);
-      }
-    };
+  const handleLogout = async () => {
+    try {
+      await apiClient.get("/auth/logout");
+      updateUser(null);
+      localStorage.removeItem("userData");
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
 
-    const filteredUsers = users.filter((u) =>
-    u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter(
+    (u) =>
+      u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleSelectedUser = (userId) => {
-        const selected = filteredUsers.find(user => user._id === userId);
+    const selected = filteredUsers.find((user) => user._id === userId);
     setSelectedUser(userId);
   };
 
@@ -129,46 +156,45 @@ function Dashboard() {
         )}
       </aside>
 
-<div className="flex-1 p-6 md:ml-72 text-white">
-          {/* Mobile Sidebar Toggle */}
-          <button
-            type="button"
-            className="md:hidden text-2xl text-black mb-4"
-            onClick={() => setIsSidebarOpen(true)}
-          >
-            <FaBars />
-          </button>
+      <div className="flex-1 p-6 md:ml-72 text-white">
+        {/* Mobile Sidebar Toggle */}
+        <button
+          type="button"
+          className="md:hidden text-2xl text-black mb-4"
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          <FaBars />
+        </button>
 
-          {/* Welcome */}
-          <div className="flex items-center gap-5 mb-6 bg-gray-800 p-5 rounded-xl shadow-md">
-            <div className="w-20 h-2 text-6xl">
-              👋
-            </div>
-            <div>
-              <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-                Hey {user?.username || "Guest"}! 👋
-              </h1>
-              <p className="text-lg text-gray-300 mt-2">
-                Ready to <strong>connect with friends instantly?</strong>
-                Just <strong>select a user</strong> and start your video call! 🎥✨
-              </p>
-            </div>
-          </div>
-
-          {/* Instructions */}
-          <div className="bg-gray-800 p-4 rounded-lg shadow-lg text-sm">
-            <h2 className="text-lg font-semibold mb-2">💡 How to Start a Video Call?</h2>
-            <ul className="list-disc pl-5 space-y-2 text-gray-400">
-              <li>📌 Open the sidebar to see online users.</li>
-              <li>🔍 Use the search bar to find a specific person.</li>
-              <li>🎥 Click on a user to start a video call instantly!</li>
-            </ul>
+        {/* Welcome */}
+        <div className="flex items-center gap-5 mb-6 bg-gray-800 p-5 rounded-xl shadow-md">
+          <div className="w-20 h-2 text-6xl">👋</div>
+          <div>
+            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+              Hey {user?.username || "Guest"}! 👋
+            </h1>
+            <p className="text-lg text-gray-300 mt-2">
+              Ready to <strong>connect with friends instantly?</strong>
+              Just <strong>select a user</strong> and start your video call!
+              🎥✨
+            </p>
           </div>
         </div>
-      
 
+        {/* Instructions */}
+        <div className="bg-gray-800 p-4 rounded-lg shadow-lg text-sm">
+          <h2 className="text-lg font-semibold mb-2">
+            💡 How to Start a Video Call?
+          </h2>
+          <ul className="list-disc pl-5 space-y-2 text-gray-400">
+            <li>📌 Open the sidebar to see online users.</li>
+            <li>🔍 Use the search bar to find a specific person.</li>
+            <li>🎥 Click on a user to start a video call instantly!</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
-  }
+}
 
 export default Dashboard;
